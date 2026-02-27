@@ -28,10 +28,10 @@ app.MapPost("/api/chat", () =>
     {
         var writer = new UiSseWriter();
 
-        await writer.WriteAsync(stream, new TextStart(""));
-        await writer.WriteAsync(stream, new TextDelta("Hello "));
-        await writer.WriteAsync(stream, new TextDelta("world!"));
-        await writer.WriteAsync(stream, new TextEnd());
+        await writer.WriteAsync(stream, new TextStart("text-1"));
+        await writer.WriteAsync(stream, new TextDelta("text-1", "Hello "));
+        await writer.WriteAsync(stream, new TextDelta("text-1", "world!"));
+        await writer.WriteAsync(stream, new TextEnd("text-1"));
         await writer.WriteAsync(stream, new Finish());
         await writer.WriteAsync(stream, new Done());
     });
@@ -45,7 +45,7 @@ app.MapPost("/api/chat", async (HttpResponse response) =>
 {
     await response.WriteUiStreamAsync(async writer =>
     {
-        await writer.WriteAsync(response.Body, new TextDelta("Hi there!"));
+        await writer.WriteAsync(response.Body, new TextDelta("text-1", "Hi there!"));
         await writer.WriteAsync(response.Body, new Done());
     });
 });

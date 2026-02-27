@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 public class UiStreamOptions
 {
     public int KeepAliveInterval { get; set; } = 30; // Seconds

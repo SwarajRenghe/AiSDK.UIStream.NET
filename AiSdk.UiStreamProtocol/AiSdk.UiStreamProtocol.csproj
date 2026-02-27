@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="AiSdk.UiStreamProtocol.AspNetCore\**\*" />
   </ItemGroup>
 
 </Project>

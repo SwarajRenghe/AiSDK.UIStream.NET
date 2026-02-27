@@ -1,179 +1,112 @@
-### `README.md`
-
-````markdown
 # AiSdk.UiStreamProtocol
 
-This repository provides a .NET implementation of the **UI Stream Protocol** for interacting with frontend clients like the Vercel AI SDK. It is designed to facilitate streaming data between backend services and the frontend using Server-Sent Events (SSE) format. The stream supports both **text streams** and **data streams**, handling a variety of content types such as messages, reasoning, errors, and custom data.
+A .NET implementation of the [Vercel AI SDK UI Stream Protocol](https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol). Use this to build a .NET backend that streams AI responses directly to a frontend using `useChat`.
 
-## Features
+The protocol uses Server-Sent Events (SSE) with typed stream parts — `text-delta`, `tool-input-start`, `finish`, etc. — that the Vercel AI SDK knows how to consume.
 
-- **Text Stream Protocol**: Supports sending text content in chunks, streamed incrementally to the frontend.
-- **Data Stream Protocol**: Supports streaming various types of structured data, including messages, reasoning, tool input/output, and custom data.
-- **SSE Format**: Utilizes the Server-Sent Events (SSE) protocol for efficient, one-way communication over HTTP.
-- **Extensibility**: Allows adding custom data types and streaming formats for more advanced use cases.
+## Packages
 
-## Project Structure
+| Package | Description |
+|---|---|
+| `AiSdk.UiStreamProtocol` | Core types, SSE reader/writer, message assembler |
+| `AiSdk.UiStreamProtocol.AspNetCore` | ASP.NET Core helpers (headers, `IResult`, `HttpResponse` extension) |
+| `AiSdk.UiStreamProtocol.HttpClient` | Consume a UI stream from another service as `IAsyncEnumerable` |
 
-The project is organized into three main packages, each focusing on different aspects of the protocol.
+## Usage
 
-### 1) **AiSdk.UiStreamProtocol (Core)**
+### Streaming from an ASP.NET Core endpoint
 
-This package contains the core logic for working with the UI stream protocol, including:
-
-- **Stream-Part Types**: Defines strongly-typed stream parts (e.g., `TextStart`, `TextDelta`, `ReasoningStart`, etc.).
-- **JSON Serialization/Deserialization**: Uses `System.Text.Json` to serialize and deserialize stream parts.
-- **SSE Framing**: Handles the creation and parsing of SSE frames for communication.
-- **Message Aggregation** (Optional): Assembles stream parts into a complete message as they arrive.
-
-#### Public Surface:
-- `UiStreamPart`: Base class for all stream parts.
-- `UiSseWriter`: Writes SSE frames to a stream.
-- `UiSseReader`: Reads SSE frames from a stream.
-- `UiMessageAssembler`: Optionally aggregates stream parts into full messages.
-
-### 2) **AiSdk.UiStreamProtocol.AspNetCore**
-
-This package provides ASP.NET Core-specific functionality for serving UI streams:
-
-- **Headers and Content Type**: Configures the correct headers for streaming (`Content-Type: text/event-stream`).
-- **Minimal API & MVC Helpers**: Simplifies integration with ASP.NET Core.
-- **Compression/Buffering Safety**: Ensures safe streaming by disabling compression (as per Vercel's recommendations).
-
-#### Public Surface:
-- `UiMessageStreamResult`: Implements the `IResult` interface for minimal APIs.
-- `HttpResponse.WriteUiStreamAsync`: Helper method to write the stream to an HTTP response.
-- `UiStreamOptions`: Options for configuring the stream (e.g., keep-alive interval, JSON settings).
-
-### 3) **AiSdk.UiStreamProtocol.HttpClient**
-
-This package provides a way to consume UI streams over HTTP, making it easier to integrate the protocol into console apps or services:
-
-- **IAsyncEnumerable**: Provides async enumeration of `UiStreamPart` or `UiMessage` objects as they arrive.
-- **Simple Integration**: Works out of the box with custom backend implementations.
-
-## Getting Started
-
-### Prerequisites
-
-- **.NET SDK**: Make sure you have the .NET 6.0 SDK or higher installed on your machine.
-- **Vercel AI SDK**: If you plan to use this package in conjunction with the Vercel AI SDK, ensure it is properly set up in your frontend.
-
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/your-username/AiSdk.UiStreamProtocol.git
-   cd AiSdk.UiStreamProtocol
-````
-
-2. Restore NuGet packages:
-
-   ```bash
-   dotnet restore
-   ```
-
-3. Build the project:
-
-   ```bash
-   dotnet build
-   ```
-
-4. Run the tests (if applicable):
-
-   ```bash
-   dotnet test
-   ```
-
-### Usage Example
-
-#### Backend (ASP.NET Core)
+The simplest way is to return a `UiMessageStreamResult` from a minimal API endpoint. It sets all the required headers and streams the body.
 
 ```csharp
+using AiSdk.UiStreamProtocol;
 using AiSdk.UiStreamProtocol.Models;
 
-public class ChatController : ControllerBase
+app.MapPost("/api/chat", () =>
 {
-    [HttpPost("/api/chat")]
-    public async Task<IActionResult> Chat([FromBody] List<UIMessage> messages)
+    return new UiMessageStreamResult(async stream =>
     {
-        // Stream each message's parts as they arrive
-        foreach (var message in messages)
-        {
-            foreach (var part in message.Parts)
-            {
-                // Write each part as an SSE frame
-                await Response.WriteAsync($"data: {JsonSerializer.Serialize(part)}\n\n");
-            }
-        }
-        return Ok();
-    }
-}
+        var writer = new UiSseWriter();
+
+        await writer.WriteAsync(stream, new TextStart(""));
+        await writer.WriteAsync(stream, new TextDelta("Hello "));
+        await writer.WriteAsync(stream, new TextDelta("world!"));
+        await writer.WriteAsync(stream, new TextEnd());
+        await writer.WriteAsync(stream, new Finish());
+        await writer.WriteAsync(stream, new Done());
+    });
+});
 ```
 
-#### Frontend (React + Vercel AI SDK)
+You can also write directly to the response using the `WriteUiStreamAsync` extension:
+
+```csharp
+app.MapPost("/api/chat", async (HttpResponse response) =>
+{
+    await response.WriteUiStreamAsync(async writer =>
+    {
+        await writer.WriteAsync(response.Body, new TextDelta("Hi there!"));
+        await writer.WriteAsync(response.Body, new Done());
+    });
+});
+```
+
+### Connecting to the frontend
+
+On the React side, point `useChat` at your endpoint:
 
 ```tsx
-'use client';
-
 import { useChat } from '@ai-sdk/react';
 import { TextStreamChatTransport } from 'ai';
-import { useState } from 'react';
 
-export default function Chat() {
-  const [input, setInput] = useState('');
-  const { messages, sendMessage } = useChat({
-    transport: new TextStreamChatTransport({ api: '/api/chat' }),
-  });
+const { messages, sendMessage } = useChat({
+  transport: new TextStreamChatTransport({ api: '/api/chat' }),
+});
+```
 
-  return (
-    <div className="chat-container">
-      {messages.map(message => (
-        <div key={message.id}>
-          {message.role === 'user' ? 'User: ' : 'AI: '}
-          {message.parts.map((part, i) => {
-            if (part.type === 'text') {
-              return <div key={i}>{part.text}</div>;
-            }
-          })}
-        </div>
-      ))}
+### Consuming a stream from another .NET service
 
-      <form onSubmit={e => {
-        e.preventDefault();
-        sendMessage({ text: input });
-        setInput('');
-      }}>
-        <input
-          value={input}
-          placeholder="Say something..."
-          onChange={e => setInput(e.target.value)}
-        />
-      </form>
-    </div>
-  );
+```csharp
+var client = new UiStreamClient(httpClient);
+
+await foreach (var part in client.GetStreamAsync("https://my-service/api/chat"))
+{
+    if (part is TextDelta delta)
+        Console.Write(delta.DeltaContent);
 }
 ```
 
-## Stream Parts
+### Assembling a full message from stream parts
 
-This protocol defines various stream parts that can be used to structure the data being streamed:
+If you need to collect all parts into a single `UIMessage` object:
 
-* **Text**: `text-start`, `text-delta`, `text-end`
-* **Reasoning**: `reasoning-start`, `reasoning-delta`, `reasoning-end`
-* **Source**: `source-url`, `source-document`
-* **File**: `file`
-* **Custom Data**: `data-*` (e.g., `data-weather`, `data-stock`)
-* **Error**: `error`
-* **Tool**: `tool-input-start`, `tool-input-delta`, `tool-output-available`
-* **Step**: `start-step`, `finish-step`
-* **Finish/Abort**: `finish`, `abort`
-* **Stream Termination**: `[DONE]`
+```csharp
+var assembler = new UiMessageAssembler(role: "assistant");
 
-## Contributing
+await foreach (var part in client.GetStreamAsync(url))
+{
+    assembler.AddPart(part);
+}
 
-We welcome contributions! If you find a bug or would like to request a feature, feel free to open an issue or submit a pull request. Please make sure your code adheres to the project's coding conventions and passes all tests.
+UIMessage message = assembler.GetMessage();
+```
+
+## Stream parts
+
+The full set of stream part types:
+
+| Category | Types |
+|---|---|
+| Text | `TextStart`, `TextDelta`, `TextEnd` |
+| Reasoning | `ReasoningStart`, `ReasoningDelta`, `ReasoningEnd` |
+| Tool calls | `ToolInputStart`, `ToolInputDelta`, `ToolInputAvailable`, `ToolOutputAvailable` |
+| Steps | `StartStep`, `FinishStep` |
+| Sources | `SourceUrl`, `SourceDocument` |
+| File | `File` |
+| Custom data | `Data<T>` |
+| Control | `Finish`, `Abort`, `Done` |
+| Error | `Error` |
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT

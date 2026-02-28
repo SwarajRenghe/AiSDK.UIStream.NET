@@ -52,7 +52,7 @@ public class UiMessageStreamResult : IResult
                     var delta = choices[0].GetProperty("delta");
 
                     // Reasoning content — supported by DeepSeek R1 and similar via OpenRouter
-                    if (delta.TryGetProperty("reasoning", out var reasoning) && reasoning.GetString() is string reasoningText)
+                    if (delta.TryGetProperty("reasoning", out var reasoning) && reasoning.GetString() is string { Length: > 0 } reasoningText)
                     {
                         if (!reasoningStarted)
                         {
@@ -63,7 +63,7 @@ public class UiMessageStreamResult : IResult
                     }
 
                     // Text content — close reasoning block first if it was open
-                    if (delta.TryGetProperty("content", out var content) && content.GetString() is string text)
+                    if (delta.TryGetProperty("content", out var content) && content.GetString() is string { Length: > 0 } text)
                     {
                         if (reasoningStarted && !reasoningEnded)
                         {

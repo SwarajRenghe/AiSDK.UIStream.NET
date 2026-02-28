@@ -146,6 +146,21 @@ public class FromOpenAiStreamTests
     }
 
     [Fact]
+    public async Task EmptyContentChunks_AreNotEmittedAsDeltaFrames()
+    {
+        // OpenAI-compatible APIs often send empty-string content on the first/last chunks
+        var frames = await GetFramesAsync(MakeResponse(
+            ContentChunk(""),
+            ContentChunk("Hello"),
+            ContentChunk(""),
+            DoneChunk));
+
+        var deltas = frames.Where(f => f.Contains("\"text-delta\"")).ToArray();
+        Assert.Single(deltas);
+        Assert.Equal("Hello", Json(deltas[0]).GetProperty("delta").GetString());
+    }
+
+    [Fact]
     public async Task MalformedJsonLines_AreSkippedGracefully()
     {
         // A bad SSE line in the middle should not crash the stream

@@ -1,4 +1,4 @@
-# AiSdk.UiStreamProtocol
+# .NET Implementation of the Vercel AI SDK UI Stream Protocol (Data Stream Protocol)
 
 [![CI](https://github.com/SwarajRenghe/Dotnet-Vercel-UIStream-Protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/SwarajRenghe/Dotnet-Vercel-UIStream-Protocol/actions/workflows/ci.yml)
 

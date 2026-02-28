@@ -1,5 +1,7 @@
 # AiSdk.UiStreamProtocol
 
+[![CI](https://github.com/SwarajRenghe/Dotnet-Vercel-UIStream-Protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/SwarajRenghe/Dotnet-Vercel-UIStream-Protocol/actions/workflows/ci.yml)
+
 A .NET implementation of the [Vercel AI SDK UI Stream Protocol](https://sdk.vercel.ai/docs/ai-sdk-ui/stream-protocol). Use this to build a .NET backend that streams AI responses directly to a frontend using `useChat`.
 
 The protocol uses Server-Sent Events (SSE) with typed stream parts — `text-delta`, `tool-input-start`, `finish`, etc. — that the Vercel AI SDK knows how to consume.

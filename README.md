@@ -16,63 +16,40 @@ A .NET implementation of the [Vercel AI SDK UI Stream Protocol](https://sdk.verc
 
 ### Bridging an AI provider to the frontend (OpenRouter example)
 
-The most common pattern: your ASP.NET Core endpoint calls an AI provider, translates the response into the UI stream protocol, and pipes it to `useChat` on the frontend.
+Call any OpenAI-compatible provider and pass the response to `FromOpenAiStream` — it handles the SSE parsing and protocol translation automatically.
 
 ```sh
 dotnet add package AiSdk.UiStreamProtocol.AspNetCore
 ```
 
 ```csharp
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using AiSdk.UiStreamProtocol;
 using AiSdk.UiStreamProtocol.AspNetCore;
-using AiSdk.UiStreamProtocol.Models;
 
-app.MapPost("/api/chat", (IConfiguration config) =>
+app.MapPost("/api/chat", async (IConfiguration config) =>
 {
-    return new UiMessageStreamResult(async stream =>
-    {
-        var writer = new UiSseWriter();
-
-        // Call OpenRouter (OpenAI-compatible streaming API)
-        using var http = new HttpClient();
-        http.DefaultRequestHeaders.Add("Authorization", $"Bearer {config["OpenRouter:ApiKey"]}");
-
-        var body = JsonSerializer.Serialize(new
+    var request = new HttpRequestMessage(HttpMethod.Post, "https://openrouter.ai/api/v1/chat/completions");
+    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config["OpenRouter:ApiKey"]);
+    request.Content = new StringContent(
+        JsonSerializer.Serialize(new
         {
             model = "anthropic/claude-3.5-sonnet",
             stream = true,
             messages = new[] { new { role = "user", content = "Hello!" } }
-        });
+        }),
+        Encoding.UTF8, "application/json");
 
-        using var response = await http.PostAsync(
-            "https://openrouter.ai/api/v1/chat/completions",
-            new StringContent(body, Encoding.UTF8, "application/json"));
+    var http = new HttpClient();
+    var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+    response.EnsureSuccessStatusCode();
 
-        using var reader = new StreamReader(await response.Content.ReadAsStreamAsync());
-
-        await writer.WriteAsync(stream, new TextStart("text-1"));
-
-        while (!reader.EndOfStream)
-        {
-            var line = await reader.ReadLineAsync();
-            if (line is null || !line.StartsWith("data: ")) continue;
-            var data = line["data: ".Length..];
-            if (data == "[DONE]") break;
-
-            var doc = JsonDocument.Parse(data);
-            var delta = doc.RootElement.GetProperty("choices")[0].GetProperty("delta");
-            if (delta.TryGetProperty("content", out var content) && content.GetString() is string text)
-                await writer.WriteAsync(stream, new TextDelta("text-1", text));
-        }
-
-        await writer.WriteAsync(stream, new TextEnd("text-1"));
-        await writer.WriteAsync(stream, new Finish());
-        await writer.WriteAsync(stream, new Done());
-    });
+    return UiMessageStreamResult.FromOpenAiStream(response);
 });
 ```
+
+Works with any OpenAI-compatible provider: OpenRouter, Azure OpenAI, OpenAI directly, etc. Reasoning tokens (`deepseek/deepseek-r1` and similar) are handled automatically.
 
 On the React side, point `useChat` at your endpoint:
 
@@ -85,13 +62,11 @@ const { messages, sendMessage } = useChat({
 });
 ```
 
-`UiMessageStreamResult` sets all required headers (`Content-Type: text/event-stream`, `x-vercel-ai-ui-message-stream: v1`, etc.) automatically.
-
 ---
 
 ### Consuming a stream between .NET services
 
-If you have a service (or microservice) that already produces a UI stream, read it as an `IAsyncEnumerable` of typed parts:
+If a service already produces a UI stream, read it as an `IAsyncEnumerable` of typed parts:
 
 ```sh
 dotnet add package AiSdk.UiStreamProtocol.HttpClient
@@ -123,18 +98,18 @@ UIMessage message = assembler.GetMessage();
 
 ---
 
-### Writing stream parts directly
+### Writing stream parts manually
 
-For cases where you need full control without a framework, write parts to any `Stream` via `UiSseWriter`:
+For full control over the output, write parts directly to any `Stream`:
 
 ```csharp
 using AiSdk.UiStreamProtocol;
 using AiSdk.UiStreamProtocol.Models;
 
 var writer = new UiSseWriter();
-await writer.WriteAsync(outputStream, new TextStart("text-1"));
-await writer.WriteAsync(outputStream, new TextDelta("text-1", "Hello world!"));
-await writer.WriteAsync(outputStream, new TextEnd("text-1"));
+await writer.WriteAsync(outputStream, new TextStart("text-0"));
+await writer.WriteAsync(outputStream, new TextDelta("text-0", "Hello world!"));
+await writer.WriteAsync(outputStream, new TextEnd("text-0"));
 await writer.WriteAsync(outputStream, new Finish());
 await writer.WriteAsync(outputStream, new Done());
 ```

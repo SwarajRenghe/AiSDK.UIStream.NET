@@ -8,11 +8,11 @@ The protocol uses Server-Sent Events (SSE) with typed stream parts — `text-del
 
 ## Packages
 
-| Package | NuGet | Description |
-|---|---|---|
-| `AiSdk.UiStreamProtocol` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol/) | Core types, SSE reader/writer, message assembler |
+| Package                             | NuGet                                                                                                                                           | Description                                                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `AiSdk.UiStreamProtocol`            | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol/)                       | Core types, SSE reader/writer, message assembler                    |
 | `AiSdk.UiStreamProtocol.AspNetCore` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol.AspNetCore)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol.AspNetCore/) | ASP.NET Core helpers (headers, `IResult`, `HttpResponse` extension) |
-| `AiSdk.UiStreamProtocol.HttpClient` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol.HttpClient)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol.HttpClient/) | Consume a UI stream from another service as `IAsyncEnumerable` |
+| `AiSdk.UiStreamProtocol.HttpClient` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol.HttpClient)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol.HttpClient/) | Consume a UI stream from another service as `IAsyncEnumerable`      |
 
 ## Installation
 
@@ -72,11 +72,11 @@ app.MapPost("/api/chat", async (HttpResponse response) =>
 On the React side, point `useChat` at your endpoint:
 
 ```tsx
-import { useChat } from '@ai-sdk/react';
-import { TextStreamChatTransport } from 'ai';
+import { useChat } from "@ai-sdk/react";
+import { TextStreamChatTransport } from "ai";
 
 const { messages, sendMessage } = useChat({
-  transport: new TextStreamChatTransport({ api: '/api/chat' }),
+  transport: new TextStreamChatTransport({ api: "/api/chat" }),
 });
 ```
 
@@ -111,17 +111,17 @@ UIMessage message = assembler.GetMessage();
 
 The full set of stream part types:
 
-| Category | Types |
-|---|---|
-| Text | `TextStart`, `TextDelta`, `TextEnd` |
-| Reasoning | `ReasoningStart`, `ReasoningDelta`, `ReasoningEnd` |
-| Tool calls | `ToolInputStart`, `ToolInputDelta`, `ToolInputAvailable`, `ToolOutputAvailable` |
-| Steps | `StartStep`, `FinishStep` |
-| Sources | `SourceUrl`, `SourceDocument` |
-| File | `File` |
-| Custom data | `Data<T>` |
-| Control | `Finish`, `Abort`, `Done` |
-| Error | `Error` |
+| Category    | Types                                                                           |
+| ----------- | ------------------------------------------------------------------------------- |
+| Text        | `TextStart`, `TextDelta`, `TextEnd`                                             |
+| Reasoning   | `ReasoningStart`, `ReasoningDelta`, `ReasoningEnd`                              |
+| Tool calls  | `ToolInputStart`, `ToolInputDelta`, `ToolInputAvailable`, `ToolOutputAvailable` |
+| Steps       | `StartStep`, `FinishStep`                                                       |
+| Sources     | `SourceUrl`, `SourceDocument`                                                   |
+| File        | `File`                                                                          |
+| Custom data | `Data<T>`                                                                       |
+| Control     | `Finish`, `Abort`, `Done`                                                       |
+| Error       | `Error`                                                                         |
 
 ## License
 

@@ -1,3 +1,4 @@
+using AiSdk.UiStreamProtocol.AspNetCore;
 using Microsoft.AspNetCore.Http;
 using Xunit;
 

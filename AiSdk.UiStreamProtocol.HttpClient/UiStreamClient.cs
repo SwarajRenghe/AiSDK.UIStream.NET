@@ -1,15 +1,14 @@
-using System.Net.Http;
-using System.Text.Json;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using AiSdk.UiStreamProtocol;
 using AiSdk.UiStreamProtocol.Models;
 
+namespace AiSdk.UiStreamProtocol.HttpClient;
+
 public class UiStreamClient
 {
-    private readonly HttpClient _httpClient;
+    private readonly System.Net.Http.HttpClient _httpClient;
 
-    public UiStreamClient(HttpClient httpClient)
+    public UiStreamClient(System.Net.Http.HttpClient httpClient)
     {
         _httpClient = httpClient;
     }

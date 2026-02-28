@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+namespace AiSdk.UiStreamProtocol.AspNetCore;
+
 public class UiStreamOptions
 {
     public int KeepAliveInterval { get; set; } = 30; // Seconds

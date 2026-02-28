@@ -1,14 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <ProjectReference Include="..\AiSdk.UiStreamProtocol\AiSdk.UiStreamProtocol.csproj" />
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>AiSdk.UiStreamProtocol.AspNetCore</PackageId>
+    <Description>ASP.NET Core helpers for serving Vercel AI SDK UI streams — IResult, HttpResponse extension, and streaming headers.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="..\AiSdk.UiStreamProtocol\AiSdk.UiStreamProtocol.csproj" />
+  </ItemGroup>
 
 </Project>

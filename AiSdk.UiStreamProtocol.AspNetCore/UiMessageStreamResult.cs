@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Http;
 
+namespace AiSdk.UiStreamProtocol.AspNetCore;
+
 public class UiMessageStreamResult : IResult
 {
     private readonly Func<Stream, Task> _writeStreamFunc;

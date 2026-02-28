@@ -1,14 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\AiSdk.UiStreamProtocol\AiSdk.UiStreamProtocol.csproj" />
-    <ProjectReference Include="..\AiSdk.UiStreamProtocol.AspNetCore\AiSdk.UiStreamProtocol.AspNetCore.csproj" />
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PackageId>AiSdk.UiStreamProtocol.HttpClient</PackageId>
+    <Description>HttpClient helpers for consuming Vercel AI SDK UI streams as IAsyncEnumerable.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AiSdk.UiStreamProtocol\AiSdk.UiStreamProtocol.csproj" />
+  </ItemGroup>
 
 </Project>

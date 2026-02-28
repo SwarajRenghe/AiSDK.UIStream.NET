@@ -6,7 +6,12 @@
     <Nullable>enable</Nullable>
     <PackageId>AiSdk.UiStreamProtocol.AspNetCore</PackageId>
     <Description>ASP.NET Core helpers for serving Vercel AI SDK UI streams — IResult, HttpResponse extension, and streaming headers.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

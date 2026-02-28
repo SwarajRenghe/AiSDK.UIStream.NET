@@ -6,11 +6,25 @@ The protocol uses Server-Sent Events (SSE) with typed stream parts — `text-del
 
 ## Packages
 
-| Package | Description |
-|---|---|
-| `AiSdk.UiStreamProtocol` | Core types, SSE reader/writer, message assembler |
-| `AiSdk.UiStreamProtocol.AspNetCore` | ASP.NET Core helpers (headers, `IResult`, `HttpResponse` extension) |
-| `AiSdk.UiStreamProtocol.HttpClient` | Consume a UI stream from another service as `IAsyncEnumerable` |
+| Package | NuGet | Description |
+|---|---|---|
+| `AiSdk.UiStreamProtocol` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol/) | Core types, SSE reader/writer, message assembler |
+| `AiSdk.UiStreamProtocol.AspNetCore` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol.AspNetCore)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol.AspNetCore/) | ASP.NET Core helpers (headers, `IResult`, `HttpResponse` extension) |
+| `AiSdk.UiStreamProtocol.HttpClient` | [![NuGet](https://img.shields.io/nuget/v/AiSdk.UiStreamProtocol.HttpClient)](https://www.nuget.org/packages/AiSdk.UiStreamProtocol.HttpClient/) | Consume a UI stream from another service as `IAsyncEnumerable` |
+
+## Installation
+
+Most projects only need the AspNetCore package, which pulls in the core as a dependency:
+
+```sh
+dotnet add package AiSdk.UiStreamProtocol.AspNetCore
+```
+
+If you're consuming a stream from another service (e.g. a console app or a BFF calling a microservice):
+
+```sh
+dotnet add package AiSdk.UiStreamProtocol.HttpClient
+```
 
 ## Usage
 
@@ -72,7 +86,7 @@ var client = new UiStreamClient(httpClient);
 await foreach (var part in client.GetStreamAsync("https://my-service/api/chat"))
 {
     if (part is TextDelta delta)
-        Console.Write(delta.DeltaContent);
+        Console.Write(delta.Delta);
 }
 ```
 

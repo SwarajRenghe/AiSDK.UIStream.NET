@@ -6,7 +6,12 @@
     <Nullable>enable</Nullable>
     <PackageId>AiSdk.UiStreamProtocol.HttpClient</PackageId>
     <Description>HttpClient helpers for consuming Vercel AI SDK UI streams as IAsyncEnumerable.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\AiSdk.UiStreamProtocol\AiSdk.UiStreamProtocol.csproj" />

@@ -12,7 +12,7 @@ public class HeaderTests
     {
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
-        var result = new UiMessageStreamResult(_ => Task.CompletedTask);
+        var result = new UiMessageStreamResult((_, __) => Task.CompletedTask);
         await result.ExecuteAsync(context);
         return context;
     }

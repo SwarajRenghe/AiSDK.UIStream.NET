@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using AiSdk.UiStreamProtocol.Models;
 
@@ -13,20 +14,35 @@ public class UiSseWriter
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public async Task WriteAsync(Stream stream, UiStreamPart part)
+    public async Task WriteAsync(
+    Stream stream,
+    UiStreamPart part,
+    CancellationToken cancellationToken = default)
     {
-        string data;
         if (part is Done)
         {
-            data = "data: [DONE]\n\n";
+            await stream.WriteAsync(
+                Encoding.UTF8.GetBytes("data: [DONE]\n\n").AsMemory(),
+                cancellationToken);
         }
         else
         {
-            var json = JsonSerializer.Serialize(part, part.GetType(), _options);
-            data = $"data: {json}\n\n";
+            await stream.WriteAsync(
+                Encoding.UTF8.GetBytes("data: ").AsMemory(),
+                cancellationToken);
+
+            await JsonSerializer.SerializeAsync(
+                stream,
+                part,
+                part.GetType(),
+                _options,
+                cancellationToken);
+
+            await stream.WriteAsync(
+                Encoding.UTF8.GetBytes("\n\n").AsMemory(),
+                cancellationToken);
         }
 
-        var bytes = Encoding.UTF8.GetBytes(data);
-        await stream.WriteAsync(bytes, 0, bytes.Length);
+        await stream.FlushAsync(cancellationToken);
     }
 }

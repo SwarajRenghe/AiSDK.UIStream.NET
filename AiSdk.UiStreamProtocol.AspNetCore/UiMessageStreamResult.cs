@@ -6,9 +6,9 @@ namespace AiSdk.UiStreamProtocol.AspNetCore;
 
 public class UiMessageStreamResult : IResult
 {
-    private readonly Func<Stream, Task> _writeStreamFunc;
+    private readonly Func<Stream, CancellationToken, Task> _writeStreamFunc;
 
-    public UiMessageStreamResult(Func<Stream, Task> writeStreamFunc)
+    public UiMessageStreamResult(Func<Stream, CancellationToken, Task> writeStreamFunc)
     {
         _writeStreamFunc = writeStreamFunc;
     }
@@ -25,68 +25,107 @@ public class UiMessageStreamResult : IResult
     /// </param>
     public static UiMessageStreamResult FromOpenAiStream(HttpResponseMessage response)
     {
-        return new UiMessageStreamResult(async stream =>
+        return new UiMessageStreamResult(async (stream, cancellationToken) =>
         {
             var writer = new UiSseWriter();
+
             bool textStarted = false;
             bool reasoningStarted = false;
             bool reasoningEnded = false;
 
-            using var reader = new StreamReader(await response.Content.ReadAsStreamAsync());
+            await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var reader = new StreamReader(responseStream);
 
-            string? line;
-            while ((line = await reader.ReadLineAsync()) != null)
+            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
             {
-                if (!line.StartsWith("data: ")) continue;
-                var data = line["data: ".Length..];
-                if (data == "[DONE]") break;
+                var line = await reader.ReadLineAsync();
+                if (line == null) break;
 
-                JsonDocument doc;
-                try { doc = JsonDocument.Parse(data); }
-                catch (JsonException) { continue; }
+                if (!line.StartsWith("data: "))
+                    continue;
+
+                var data = line.Substring(6);
+
+                if (data == "[DONE]")
+                    break;
+
+                JsonDocument? doc = null;
+                try
+                {
+                    doc = JsonDocument.Parse(data);
+                }
+                catch
+                {
+                    continue;
+                }
 
                 using (doc)
                 {
-                    var choices = doc.RootElement.GetProperty("choices");
-                    if (choices.GetArrayLength() == 0) continue;
+                    if (!doc.RootElement.TryGetProperty("choices", out var choices) ||
+                        choices.GetArrayLength() == 0)
+                        continue;
+
                     var delta = choices[0].GetProperty("delta");
 
-                    // Reasoning content — supported by DeepSeek R1 and similar via OpenRouter
-                    if (delta.TryGetProperty("reasoning", out var reasoning) && reasoning.GetString() is string { Length: > 0 } reasoningText)
+                    // ---- REASONING ----
+                    if (delta.TryGetProperty("reasoning", out var reasoningProp))
                     {
-                        if (!reasoningStarted)
+                        var reasoningText = reasoningProp.GetString();
+                        if (!string.IsNullOrEmpty(reasoningText))
                         {
-                            await writer.WriteAsync(stream, new ReasoningStart("reasoning-0"));
-                            reasoningStarted = true;
+                            if (!reasoningStarted)
+                            {
+                                await writer.WriteAsync(stream, new ReasoningStart("reasoning-0"), cancellationToken);
+                                reasoningStarted = true;
+                            }
+
+                            await writer.WriteAsync(stream, new ReasoningDelta("reasoning-0", reasoningText), cancellationToken);
+                            await stream.FlushAsync(cancellationToken);
                         }
-                        await writer.WriteAsync(stream, new ReasoningDelta("reasoning-0", reasoningText));
                     }
 
-                    // Text content — close reasoning block first if it was open
-                    if (delta.TryGetProperty("content", out var content) && content.GetString() is string { Length: > 0 } text)
+                    // ---- TEXT ----
+                    if (delta.TryGetProperty("content", out var contentProp))
                     {
-                        if (reasoningStarted && !reasoningEnded)
+                        var text = contentProp.GetString();
+                        if (!string.IsNullOrEmpty(text))
                         {
-                            await writer.WriteAsync(stream, new ReasoningEnd("reasoning-0"));
-                            reasoningEnded = true;
+                            if (reasoningStarted && !reasoningEnded)
+                            {
+                                await writer.WriteAsync(stream, new ReasoningEnd("reasoning-0"), cancellationToken);
+                                reasoningEnded = true;
+                            }
+
+                            if (!textStarted)
+                            {
+                                await writer.WriteAsync(stream, new TextStart("text-0"), cancellationToken);
+                                textStarted = true;
+                            }
+
+                            await writer.WriteAsync(stream, new TextDelta("text-0", text), cancellationToken);
+                            await stream.FlushAsync(cancellationToken);
                         }
-                        if (!textStarted)
-                        {
-                            await writer.WriteAsync(stream, new TextStart("text-0"));
-                            textStarted = true;
-                        }
-                        await writer.WriteAsync(stream, new TextDelta("text-0", text));
                     }
                 }
             }
 
-            if (reasoningStarted && !reasoningEnded)
-                await writer.WriteAsync(stream, new ReasoningEnd("reasoning-0"));
-            if (textStarted)
-                await writer.WriteAsync(stream, new TextEnd("text-0"));
+            // ---- CLEANUP ----
 
-            await writer.WriteAsync(stream, new Finish());
-            await writer.WriteAsync(stream, new Done());
+            if (reasoningStarted && !reasoningEnded)
+            {
+                await writer.WriteAsync(stream, new ReasoningEnd("reasoning-0"), cancellationToken);
+            }
+
+            if (textStarted)
+            {
+                await writer.WriteAsync(stream, new TextEnd("text-0"), cancellationToken);
+            }
+
+            await writer.WriteAsync(stream, new Finish(), cancellationToken);
+            await writer.WriteAsync(stream, new Done(), cancellationToken);
+
+            response.Dispose();
+            await stream.FlushAsync(cancellationToken);
         });
     }
 
@@ -98,6 +137,6 @@ public class UiMessageStreamResult : IResult
         httpContext.Response.Headers["Content-Encoding"] = "none";
         httpContext.Response.Headers["X-Accel-Buffering"] = "no";
 
-        await _writeStreamFunc(httpContext.Response.Body);
+        await _writeStreamFunc(httpContext.Response.Body, httpContext.RequestAborted);
     }
 }
